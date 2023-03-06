@@ -22,6 +22,9 @@ class Motor(tk.Label):
         self.config(text=str(round(self._cycle * 100 / MAX_COUNT, 1)))
         self.after(1, self.update)
 
+    def get_percent(self):
+        return round(self._cycle * 100 / MAX_COUNT, 1)
+
     # as for four phase stepping motor, four steps is a cycle. the function is used to drive the stepping motor clockwise or anticlockwise to take four steps    
     def moveOneCycle(self):    
         for j in range(0,4,1):      # cycle for power supply order
@@ -40,6 +43,13 @@ class Motor(tk.Label):
 
         if direction != self._direction:
             self._direction = direction
+
+        if (self._cycle >= MAX_COUNT and direction == 1) or (self._cycle <= MIN_COUNT and direction == -1):
+            self._direction = 0
+            if self._rotation_id:
+                self.after_cancel(self._rotation_id)
+            return
+
 
         self.moveOneCycle()
         self._cycle += self._direction

@@ -20,12 +20,6 @@ class Window(Frame):
 root = Tk()
 app = Window(root)
 
-def mode_automatique():
-    print("Automatique")
-
-def mode_manuel():
-    print("Manuel")
-
 # set window title
 root.wm_title("Controle porte d'aeration")
 
@@ -50,17 +44,36 @@ label_vitesse = Label(root, text = "Vitesse : ")
 
 entry_pourcent = Entry(root)
 
-def ouvrir_porte():
-    display_pourcentage_actuel.moveSteps(1)
+def mode_automatique():
+    print("Automatique")
 
-def fermer_porte():
-    display_pourcentage_actuel.moveSteps(-1)
-
-def stop():
-    display_pourcentage_actuel.stop()
+def mode_manuel():
+    print("Manuel")
 
 btn_automatique = Button(root, text = "Automatique", command = mode_automatique)
 btn_manuel = Button(root, text = "Manuel", command = mode_manuel)
+
+def ouvrir_porte():
+    display_pourcentage_actuel.moveSteps(1)
+    btn_automatique['state'] = 'disabled'
+    btn_manuel['state'] = 'disabled'
+    btn_ouvrir['state'] = 'disabled'
+    btn_fermer['state'] = 'normal'
+
+def fermer_porte():
+    display_pourcentage_actuel.moveSteps(-1)
+    btn_automatique['state'] = 'disabled'
+    btn_manuel['state'] = 'disabled'
+    btn_fermer['state'] = 'disabled'
+    btn_ouvrir['state'] = 'normal'
+
+def stop():
+    display_pourcentage_actuel.stop()
+    btn_automatique['state'] = 'normal'
+    btn_manuel['state'] = 'normal'
+    btn_ouvrir['state'] = 'normal'
+    btn_fermer['state'] = 'normal'
+
 btn_ouvrir = Button(root, text = "Ouvrir", command = ouvrir_porte)
 btn_fermer = Button(root, text = "Fermer", command = fermer_porte)
 btn_stop = Button(root, text = "Stop", command = stop)
@@ -103,6 +116,10 @@ def setup():
         "Program Exit. \n")
         exit(-1)
 
+def update():
+    root.update()
+    root.after(1, update) 
+
 def update_temperature():
     value = adc.analogRead(0)        # read ADC value A0 pin
     voltage = value / 255.0 * 3.3        # calculate voltage
@@ -114,7 +131,6 @@ def update_temperature():
         Rt = 0 # calculate resistance value of thermistor
 
     display_temperature['text'] = str(round(tempC, 2))
-    root.update()
     root.after(1, update_temperature) # run itself again after 1 ms
 
 def destroy():
@@ -127,6 +143,7 @@ if __name__ == '__main__':  # Program entrance
     try:
         display_pourcentage_actuel.update()
         update_temperature()
+        update()
         # show window
         root.mainloop()
     except KeyboardInterrupt: # Press ctrl-c to end the program.

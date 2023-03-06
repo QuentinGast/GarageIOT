@@ -29,7 +29,7 @@ app = Window(root)
 # set window title
 root.wm_title("Controle porte d'aeration")
 
-root.geometry("800x300")
+root.geometry("500x200")
 
 root.eval('tk::PlaceWindow . center')
 
@@ -37,7 +37,7 @@ label_temperature = Label(root, text = "Temperature ambiante : ")
 display_temperature = Label(root, text = "0")
 label_celsius = Label(root, text = "°C")
 
-label_poucentage_actuel = Label(root, text = "Pourcentage d'ouverture de la porte : ")
+label_poucentage_actuel = Label(root, text = "Ouverture actuelle : ")
 motor_controller = Motor(root, text = "0")
 label_pourcent_actuel = Label(root, text = "%")
 
@@ -45,10 +45,6 @@ label_controle = Label(root, text = "Controle : ")
 label_pourcent = Label(root, text = "%")
 
 label_max = Label(root, text = "Ouverture maximale : ")
-
-label_moteur = Label(root, text = "Moteur : ")
-label_direction = Label(root, text = "Direction : ")
-label_vitesse = Label(root, text = "Vitesse : ")
 
 entry_pourcent = Entry(root)
 entry_pourcent.config(width=5)
@@ -61,7 +57,7 @@ def mode_automatique():
 def mode_manuel():
     state_change("manuel")
 
-btn_automatique = Button(root, text = "Automatique", command = mode_automatique)
+btn_automatique = Button(root, text = "Auto", command = mode_automatique)
 btn_manuel = Button(root, text = "Manuel", command = mode_manuel)
 
 def ouvrir_porte():
@@ -84,18 +80,15 @@ label_temperature.grid(row = 0, column = 0, sticky = W, pady = 2)
 display_temperature.grid(row = 0, column = 1, sticky = W, pady = 2)
 label_celsius.grid(row = 0, column = 2, sticky = W, pady = 2)
 
-label_poucentage_actuel.grid(row = 0, column = 3, sticky = W, pady = 2)
-motor_controller.grid(row = 0, column = 4, sticky = W, pady = 2)
-label_pourcent_actuel.grid(row = 0, column = 5, sticky = W, pady = 2)
-
 label_controle.grid(row = 1, column = 0, sticky = W, pady = 2)
-label_moteur.grid(row = 4, column = 0, sticky = W, pady = 2)
-label_direction.grid(row = 5, column = 0, sticky = W, pady = 2)
-label_vitesse.grid(row = 5, column = 3, sticky = W, pady = 2)
 
 label_max.grid(row = 2, column = 0, sticky = W, pady = 2)
 entry_pourcent.grid(row = 2, column = 1, sticky = W, pady = 2)
 label_pourcent.grid(row = 2, column = 2, sticky = W, pady = 2)
+
+label_poucentage_actuel.grid(row = 4, column = 0, sticky = W, pady = 2)
+motor_controller.grid(row = 4, column = 1, sticky = W, pady = 2)
+label_pourcent_actuel.grid(row = 4, column = 2, sticky = W, pady = 2)
 
 btn_automatique.grid(row = 1, column = 1, sticky = W, pady = 2)
 btn_manuel.grid(row = 1, column = 2, sticky = W, pady = 2)
@@ -166,7 +159,7 @@ def state_reset():
     entry_pourcent['state'] = 'normal'
 
 def state_ouverture():
-    if motor_controller.get() == get_percent():
+    if motor_controller.get() >= get_percent():
         btn_automatique['state'] = 'normal'
         btn_ouvrir['state'] = 'disabled'
         btn_fermer['state'] = 'normal'
@@ -176,7 +169,7 @@ def state_ouverture():
         root.after(1, state_ouverture)
 
 def state_fermeture():
-    if motor_controller.get() == 0:
+    if motor_controller.get() <= 0:
         btn_automatique['state'] = 'normal'
         btn_ouvrir['state'] = 'normal'
         btn_fermer['state'] = 'disabled'
@@ -209,34 +202,33 @@ def update_automatique():
     elif percent < 0:
         percent = 0
 
-    print(percent)
-
     if percent > motor_controller.get():
         motor_controller.start(1, percent)
 
     elif percent < motor_controller.get():
         motor_controller.start(-1, 100, percent)
 
-    display_temperature['text'] = str(temperature)
-    root.update()
-    root.after(10, update_automatique) # run itself again after 10 ms
+    root.after(1000, update_automatique) # run itself again after 1 s
     
 def get_temperature():
     value = adc.analogRead(0)        # read ADC value A0 pin
     voltage = value / 255.0 * 3.3        # calculate voltage
     try:
         Rt = 10 * voltage / (3.3 - voltage)    # calculate resistance value of thermistor
+        if Rt == 0:
+            return 0
         tempK = 1/(1/(273.15 + 25) + math.log(Rt/10)/3950.0) # calculate temperature (Kelvin)
         tempC = tempK -273.15        # calculate temperature (Celsius)
     except ZeroDivisionError:
         Rt = 0 # calculate resistance value of thermistor
+        return 0
 
     return tempC
 
 def update_temperature():
     display_temperature['text'] = str(round(get_temperature(), 1))
     root.update()
-    root.after(1, update_temperature) # run itself again after 1 ms
+    root.after(100, update_temperature) # run itself again after 10 ms
 
 def destroy():
     adc.close()
@@ -249,7 +241,6 @@ if __name__ == '__main__':  # Program entrance
     try:
         motor_controller.update()
         update_temperature()
-        update()
         # show window
         root.mainloop()
     except KeyboardInterrupt: # Press ctrl-c to end the program.

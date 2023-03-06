@@ -12,6 +12,12 @@ motorPins = (12, 16, 18, 22)    # define pins connected to four phase ABCD of st
 CCWStep = (0x01,0x02,0x04,0x08) # define power supply order for rotating anticlockwise 
 CWStep = (0x08,0x04,0x02,0x01)  # define power supply order for rotating clockwise
 
+TEMP_MIN = 20
+TEMP_MAX = 35
+
+is_automatique = False
+is_manuel = False
+
 class Window(Frame):
     def __init__(self, master=None):
         Frame.__init__(self, master)
@@ -32,47 +38,43 @@ display_temperature = Label(root, text = "0")
 label_celsius = Label(root, text = "°C")
 
 label_poucentage_actuel = Label(root, text = "Pourcentage d'ouverture de la porte : ")
-display_pourcentage_actuel = Motor(root, text = "0")
+motor_controller = Motor(root, text = "0")
 label_pourcent_actuel = Label(root, text = "%")
 
 label_controle = Label(root, text = "Controle : ")
 label_pourcent = Label(root, text = "%")
+
+label_max = Label(root, text = "Ouverture maximale : ")
 
 label_moteur = Label(root, text = "Moteur : ")
 label_direction = Label(root, text = "Direction : ")
 label_vitesse = Label(root, text = "Vitesse : ")
 
 entry_pourcent = Entry(root)
+entry_pourcent.config(width=5)
+entry_pourcent.insert(0, "100")
 
 def mode_automatique():
-    print("Automatique")
+    state_change("automatique")
+    update_automatique()
 
 def mode_manuel():
-    print("Manuel")
+    state_change("manuel")
 
 btn_automatique = Button(root, text = "Automatique", command = mode_automatique)
 btn_manuel = Button(root, text = "Manuel", command = mode_manuel)
 
 def ouvrir_porte():
-    display_pourcentage_actuel.moveSteps(1)
-    btn_automatique['state'] = 'disabled'
-    btn_manuel['state'] = 'disabled'
-    btn_ouvrir['state'] = 'disabled'
-    btn_fermer['state'] = 'normal'
+    state_change("ouvrir")
+    motor_controller.start(1)
 
 def fermer_porte():
-    display_pourcentage_actuel.moveSteps(-1)
-    btn_automatique['state'] = 'disabled'
-    btn_manuel['state'] = 'disabled'
-    btn_fermer['state'] = 'disabled'
-    btn_ouvrir['state'] = 'normal'
+    state_change("fermer")
+    motor_controller.start(-1)
 
 def stop():
-    display_pourcentage_actuel.stop()
-    btn_automatique['state'] = 'normal'
-    btn_manuel['state'] = 'normal'
-    btn_ouvrir['state'] = 'normal'
-    btn_fermer['state'] = 'normal'
+    state_change("manuel")
+    motor_controller.stop()
 
 btn_ouvrir = Button(root, text = "Ouvrir", command = ouvrir_porte)
 btn_fermer = Button(root, text = "Fermer", command = fermer_porte)
@@ -83,19 +85,20 @@ display_temperature.grid(row = 0, column = 1, sticky = W, pady = 2)
 label_celsius.grid(row = 0, column = 2, sticky = W, pady = 2)
 
 label_poucentage_actuel.grid(row = 0, column = 3, sticky = W, pady = 2)
-display_pourcentage_actuel.grid(row = 0, column = 4, sticky = W, pady = 2)
+motor_controller.grid(row = 0, column = 4, sticky = W, pady = 2)
 label_pourcent_actuel.grid(row = 0, column = 5, sticky = W, pady = 2)
 
 label_controle.grid(row = 1, column = 0, sticky = W, pady = 2)
-label_pourcent.grid(row = 2, column = 3, sticky = W, pady = 2)
 label_moteur.grid(row = 4, column = 0, sticky = W, pady = 2)
 label_direction.grid(row = 5, column = 0, sticky = W, pady = 2)
 label_vitesse.grid(row = 5, column = 3, sticky = W, pady = 2)
 
-entry_pourcent.grid(row = 2, column = 2, sticky = W, pady = 2)
+label_max.grid(row = 2, column = 0, sticky = W, pady = 2)
+entry_pourcent.grid(row = 2, column = 1, sticky = W, pady = 2)
+label_pourcent.grid(row = 2, column = 2, sticky = W, pady = 2)
 
 btn_automatique.grid(row = 1, column = 1, sticky = W, pady = 2)
-btn_manuel.grid(row = 2, column = 1, sticky = W, pady = 2)
+btn_manuel.grid(row = 1, column = 2, sticky = W, pady = 2)
 btn_ouvrir.grid(row = 3, column = 1, sticky = W, pady = 2)
 btn_fermer.grid(row = 3, column = 2, sticky = W, pady = 2)
 btn_stop.grid(row = 3, column = 3, sticky = W, pady = 2)
@@ -116,11 +119,92 @@ def setup():
         "Program Exit. \n")
         exit(-1)
 
+def state_change(state):
+    state_reset()
+    global is_automatique
+    global is_manuel
+    if state == "automatique":
+        is_manuel = False
+        btn_automatique['state'] = 'disabled'
+        btn_ouvrir['state'] = 'disabled'
+        btn_fermer['state'] = 'disabled'
+        btn_stop['state'] = 'disabled'
+        entry_pourcent['state'] = 'disabled'
+        is_automatique = True
+    elif state == "manuel":
+        is_automatique = False
+        btn_manuel['state'] = 'disabled'
+        is_manuel = True
+    elif state == "ouvrir":
+        btn_automatique['state'] = 'disabled'
+        btn_manuel['state'] = 'disabled'
+        btn_ouvrir['state'] = 'disabled'
+        entry_pourcent['state'] = 'disabled'
+        state_ouverture()
+    elif state == "fermer":
+        btn_automatique['state'] = 'disabled'
+        btn_manuel['state'] = 'disabled'
+        btn_fermer['state'] = 'disabled'
+        entry_pourcent['state'] = 'disabled'
+        state_fermeture()
+
+def state_reset():
+    btn_automatique['state'] = 'normal'
+    btn_manuel['state'] = 'normal'
+    btn_ouvrir['state'] = 'normal'
+    btn_fermer['state'] = 'normal'
+
+def state_ouverture():
+    if motor_controller.get() == 100:
+        btn_automatique['state'] = 'normal'
+        btn_manuel['state'] = 'normal'
+        btn_ouvrir['state'] = 'disabled'
+        btn_fermer['state'] = 'normal'
+        entry_pourcent['state'] = 'normal'
+    else:
+        root.after(1, state_ouverture)
+
+def state_fermeture():
+    if motor_controller.get() == 0:
+        btn_automatique['state'] = 'normal'
+        btn_manuel['state'] = 'normal'
+        btn_ouvrir['state'] = 'normal'
+        btn_fermer['state'] = 'disabled'
+        entry_pourcent['state'] = 'normal'
+    else:
+        root.after(1, state_fermeture)
+
 def update():
     root.update()
     root.after(1, update) 
 
-def update_temperature():
+def update_automatique():
+    if not is_automatique:
+        return
+
+    temperature = get_temperature()
+    temperature = round(temperature, 1)
+    percent = (temperature - TEMP_MIN) / (TEMP_MAX - TEMP_MIN) * 100
+    percent = int(percent)
+
+    if percent > 100:
+        percent = 100
+    elif percent < 0:
+        percent = 0
+
+    print(percent)
+
+    if percent > motor_controller.get():
+        motor_controller.start(1, percent)
+
+    elif percent < motor_controller.get():
+        motor_controller.start(-1, 100, percent)
+
+    display_temperature['text'] = str(temperature)
+    root.update()
+    root.after(10, update_automatique) # run itself again after 10 ms
+    
+def get_temperature():
     value = adc.analogRead(0)        # read ADC value A0 pin
     voltage = value / 255.0 * 3.3        # calculate voltage
     try:
@@ -130,7 +214,11 @@ def update_temperature():
     except ZeroDivisionError:
         Rt = 0 # calculate resistance value of thermistor
 
-    display_temperature['text'] = str(round(tempC, 2))
+    return tempC
+
+def update_temperature():
+    display_temperature['text'] = str(round(get_temperature(), 1))
+    root.update()
     root.after(1, update_temperature) # run itself again after 1 ms
 
 def destroy():
@@ -140,8 +228,9 @@ def destroy():
 if __name__ == '__main__':  # Program entrance
     print ('Program is starting ... ')
     setup()
+    state_change("manuel")
     try:
-        display_pourcentage_actuel.update()
+        motor_controller.update()
         update_temperature()
         update()
         # show window

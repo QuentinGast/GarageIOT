@@ -5,6 +5,7 @@ import math
 
 MIN_COUNT = 0
 MAX_COUNT = 512
+MAX_PERCENT = 100
 MS = 3 # the delay can not be less than 3ms, otherwise it will exceed speed limit of the motor
 
 motorPins = (12, 16, 18, 22)    # define pins connected to four phase ABCD of stepper motor
@@ -22,7 +23,7 @@ class Motor(tk.Label):
         self.config(text=str(round(self._cycle * 100 / MAX_COUNT, 1)))
         self.after(1, self.update)
 
-    def get_percent(self):
+    def get(self):
         return round(self._cycle * 100 / MAX_COUNT, 1)
 
     # as for four phase stepping motor, four steps is a cycle. the function is used to drive the stepping motor clockwise or anticlockwise to take four steps    
@@ -36,7 +37,8 @@ class Motor(tk.Label):
             time.sleep(MS * 0.001)  
 
     # continuous rotation function, the parameter steps specifies the rotation cycles, every four steps is a cycle
-    def moveSteps(self, direction):
+    def moveSteps(self, direction, max_count, min_count):
+
         if direction == self._direction + 2 or direction == self._direction - 2:
             self._direction = 0
             self.after_cancel(self._rotation_id)
@@ -44,7 +46,7 @@ class Motor(tk.Label):
         if direction != self._direction:
             self._direction = direction
 
-        if (self._cycle >= MAX_COUNT and direction == 1) or (self._cycle <= MIN_COUNT and direction == -1):
+        if (self._cycle >= max_count and direction == 1) or (self._cycle <= min_count and direction == -1):
             self._direction = 0
             if self._rotation_id:
                 self.after_cancel(self._rotation_id)
@@ -53,13 +55,18 @@ class Motor(tk.Label):
 
         self.moveOneCycle()
         self._cycle += self._direction
-            
-        if self._cycle >= MAX_COUNT or self._cycle <= MIN_COUNT:
+
+        if self._cycle >= max_count or self._cycle <= min_count:
             self._direction = 0
             self.after_cancel(self._rotation_id)
             return
 
-        self._rotation_id = self.after(1, self.moveSteps, self._direction)
+        self._rotation_id = self.after(1, self.moveSteps, self._direction, max_count, min_count)
+
+    def start(self, direction, max_count=MAX_PERCENT, min_count=MIN_COUNT):
+        max_count = max_count * MAX_COUNT / 100
+        min_count = min_count * MAX_COUNT / 100
+        self.moveSteps(direction, max_count, min_count)
 
     def stop(self):
         self._direction = 0

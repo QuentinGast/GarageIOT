@@ -66,7 +66,7 @@ btn_manuel = Button(root, text = "Manuel", command = mode_manuel)
 
 def ouvrir_porte():
     state_change("ouvrir")
-    motor_controller.start(1)
+    motor_controller.start(1, get_percent())
 
 def fermer_porte():
     state_change("fermer")
@@ -120,12 +120,12 @@ def setup():
         exit(-1)
 
 def state_change(state):
-    state_reset()
     global is_automatique
     global is_manuel
     if state == "automatique":
         is_manuel = False
         btn_automatique['state'] = 'disabled'
+        btn_manuel['state'] = 'normal'
         btn_ouvrir['state'] = 'disabled'
         btn_fermer['state'] = 'disabled'
         btn_stop['state'] = 'disabled'
@@ -133,18 +133,27 @@ def state_change(state):
         is_automatique = True
     elif state == "manuel":
         is_automatique = False
+        btn_automatique['state'] = 'normal'
         btn_manuel['state'] = 'disabled'
+        btn_ouvrir['state'] = 'normal'
+        btn_fermer['state'] = 'normal'
+        btn_stop['state'] = 'disabled'
+        entry_pourcent['state'] = 'normal'
         is_manuel = True
     elif state == "ouvrir":
         btn_automatique['state'] = 'disabled'
         btn_manuel['state'] = 'disabled'
         btn_ouvrir['state'] = 'disabled'
+        btn_fermer['state'] = 'normal'
+        btn_stop['state'] = 'normal'
         entry_pourcent['state'] = 'disabled'
         state_ouverture()
     elif state == "fermer":
         btn_automatique['state'] = 'disabled'
         btn_manuel['state'] = 'disabled'
+        btn_ouvrir['state'] = 'normal'
         btn_fermer['state'] = 'disabled'
+        btn_stop['state'] = 'normal'
         entry_pourcent['state'] = 'disabled'
         state_fermeture()
 
@@ -153,13 +162,15 @@ def state_reset():
     btn_manuel['state'] = 'normal'
     btn_ouvrir['state'] = 'normal'
     btn_fermer['state'] = 'normal'
+    btn_stop['state'] = 'normal'
+    entry_pourcent['state'] = 'normal'
 
 def state_ouverture():
-    if motor_controller.get() == 100:
+    if motor_controller.get() == get_percent():
         btn_automatique['state'] = 'normal'
-        btn_manuel['state'] = 'normal'
         btn_ouvrir['state'] = 'disabled'
         btn_fermer['state'] = 'normal'
+        btn_stop['state'] = 'disabled'
         entry_pourcent['state'] = 'normal'
     else:
         root.after(1, state_ouverture)
@@ -167,9 +178,9 @@ def state_ouverture():
 def state_fermeture():
     if motor_controller.get() == 0:
         btn_automatique['state'] = 'normal'
-        btn_manuel['state'] = 'normal'
         btn_ouvrir['state'] = 'normal'
         btn_fermer['state'] = 'disabled'
+        btn_stop['state'] = 'disabled'
         entry_pourcent['state'] = 'normal'
     else:
         root.after(1, state_fermeture)
@@ -177,6 +188,12 @@ def state_fermeture():
 def update():
     root.update()
     root.after(1, update) 
+
+def get_percent():
+    # check if entry_pourcent.get() is a number
+    if not entry_pourcent.get().isdigit() or int(entry_pourcent.get()) > 100 or int(entry_pourcent.get()) < 0:
+        return 100
+    return int(entry_pourcent.get())
 
 def update_automatique():
     if not is_automatique:

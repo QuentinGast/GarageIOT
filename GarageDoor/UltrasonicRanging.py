@@ -47,7 +47,6 @@ class Ultrasonic(tk.Label):
     def updateDistance(self):
         self._five_last_distances.pop(0)
         self._five_last_distances.append(self.getSonar())
-        print(self.getSonar())
         self.after(100, self.updateDistance)
 
     def update(self):

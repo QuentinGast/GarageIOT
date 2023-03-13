@@ -4,7 +4,7 @@ import time
 import math
 
 MIN_COUNT = 0
-MAX_COUNT = 512
+MAX_COUNT = 512 * 3.8
 MAX_PERCENT = 100
 MS = 3 # the delay can not be less than 3ms, otherwise it will exceed speed limit of the motor
 
@@ -25,6 +25,12 @@ class Motor(tk.Label):
 
     def get(self):
         return round(self._cycle * 100 / MAX_COUNT, 1)
+    
+    def set_cycle(self, value):
+        self._cycle = value
+
+    def get_cycle(self):
+        return self._cycle
 
     # as for four phase stepping motor, four steps is a cycle. the function is used to drive the stepping motor clockwise or anticlockwise to take four steps    
     def moveOneCycle(self):    

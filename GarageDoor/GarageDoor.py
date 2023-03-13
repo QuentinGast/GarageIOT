@@ -1,3 +1,4 @@
+import os
 import RPi.GPIO as GPIO
 import time
 import math
@@ -14,6 +15,8 @@ CWStep = (0x08,0x04,0x02,0x01)  # define power supply order for rotating clockwi
 
 TEMP_MIN = 20
 TEMP_MAX = 35
+
+SAVE_PATH = "GarageDoor/save.txt"
 
 is_automatique = False
 is_manuel = False
@@ -95,22 +98,6 @@ btn_manuel.grid(row = 1, column = 2, sticky = W, pady = 2)
 btn_ouvrir.grid(row = 3, column = 1, sticky = W, pady = 2)
 btn_fermer.grid(row = 3, column = 2, sticky = W, pady = 2)
 btn_stop.grid(row = 3, column = 3, sticky = W, pady = 2)
-
-def setup():
-    GPIO.setmode(GPIO.BOARD)       # use PHYSICAL GPIO Numbering
-    for pin in motorPins:
-        GPIO.setup(pin,GPIO.OUT)
-
-    global adc
-    if(adc.detectI2C(0x48)): # Detect the pcf8591.
-        adc = PCF8591()
-    elif(adc.detectI2C(0x4b)): # Detect the ads7830
-        adc = ADS7830()
-    else:
-        print("No correct I2C address found, \n"
-        "Please use command 'i2cdetect -y 1' to check the I2C address! \n"
-        "Program Exit. \n")
-        exit(-1)
 
 def state_change(state):
     global is_automatique
@@ -230,9 +217,35 @@ def update_temperature():
     root.update()
     root.after(100, update_temperature) # run itself again after 10 ms
 
+def setup():
+    GPIO.setmode(GPIO.BOARD)       # use PHYSICAL GPIO Numbering
+    for pin in motorPins:
+        GPIO.setup(pin,GPIO.OUT)
+
+    global adc
+    if(adc.detectI2C(0x48)): # Detect the pcf8591.
+        adc = PCF8591()
+    elif(adc.detectI2C(0x4b)): # Detect the ads7830
+        adc = ADS7830()
+    else:
+        print("No correct I2C address found, \n"
+        "Please use command 'i2cdetect -y 1' to check the I2C address! \n"
+        "Program Exit. \n")
+        exit(-1)
+
+    global motor_controller
+    with open(SAVE_PATH, "r") as f:
+        motor_controller.set_cycle(int(f.read()))
+
 def destroy():
     adc.close()
     GPIO.cleanup()
+    root.destroy()
+
+def on_closing():
+    with open(SAVE_PATH, "w") as f:
+        f.write(str(motor_controller.get_cycle()))
+    destroy()
 
 if __name__ == '__main__':  # Program entrance
     print ('Program is starting ... ')
@@ -241,6 +254,7 @@ if __name__ == '__main__':  # Program entrance
     try:
         motor_controller.update()
         update_temperature()
+        root.protocol("WM_DELETE_WINDOW", on_closing)
         # show window
         root.mainloop()
     except KeyboardInterrupt: # Press ctrl-c to end the program.

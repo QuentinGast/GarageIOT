@@ -20,7 +20,7 @@ class Motor(tk.Label):
         self._rotation_id = None
 
     def update(self):
-        self.config(text=str(round(self._cycle * 100 / MAX_COUNT, 1)))
+        self.config(text=str(round(self._cycle * MAX_PERCENT / MAX_COUNT, 1)))
         self.after(1, self.update)
 
     def get(self):

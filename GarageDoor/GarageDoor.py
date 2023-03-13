@@ -1,12 +1,11 @@
-import os
 import RPi.GPIO as GPIO
 import time
-import math
 from ADCDevice import *
 from tkinter import *
 
 from Motor import Motor
 from UltrasonicRanging import Ultrasonic
+from Temperature import Temperature
 
 adc = ADCDevice() # Define an ADCDevice class object
 
@@ -14,10 +13,10 @@ motorPins = (12, 16, 18, 22)    # define pins connected to four phase ABCD of st
 CCWStep = (0x01,0x02,0x04,0x08) # define power supply order for rotating anticlockwise 
 CWStep = (0x08,0x04,0x02,0x01)  # define power supply order for rotating clockwise
 
+SAVE_PATH = "GarageDoor/save.txt"
+
 TEMP_MIN = 20
 TEMP_MAX = 35
-
-SAVE_PATH = "GarageDoor/save.txt"
 
 is_automatique = False
 is_manuel = False
@@ -33,31 +32,40 @@ app = Window(root)
 # set window title
 root.wm_title("Controle porte d'aeration")
 
+# set window size
 root.geometry("500x200")
 
+# set window position
 root.eval('tk::PlaceWindow . center')
 
+# initialize labels and controllers
+# temperature
 label_temperature = Label(root, text = "Temperature ambiante : ")
-display_temperature = Label(root, text = "0")
+temperature_controller = Temperature(root, text = "0")
 label_celsius = Label(root, text = "°C")
 
+# motor
 label_poucentage_actuel = Label(root, text = "Ouverture actuelle : ")
 motor_controller = Motor(root, text = "0")
 label_pourcent_actuel = Label(root, text = "%")
 
+# distance
 label_distance_actuelle = Label(root, text = "Distance actuelle : ")
-display_distance = Ultrasonic(root, text = "0")
+distance_controller = Ultrasonic(root, text = "0")
 label_cm = Label(root, text = "cm")
 
+# state
 label_controle = Label(root, text = "Controle : ")
 label_pourcent = Label(root, text = "%")
 
+# buttons and entries
 label_max = Label(root, text = "Ouverture maximale : ")
 
 entry_pourcent = Entry(root)
 entry_pourcent.config(width=5)
 entry_pourcent.insert(0, "100")
 
+# functions for buttons
 def mode_automatique():
     state_change("automatique")
     update_automatique()
@@ -80,12 +88,14 @@ def stop():
     state_change("manuel")
     motor_controller.stop()
 
+# buttons
 btn_ouvrir = Button(root, text = "Ouvrir", command = ouvrir_porte)
 btn_fermer = Button(root, text = "Fermer", command = fermer_porte)
 btn_stop = Button(root, text = "Stop", command = stop)
 
+# setting display widgets position in window
 label_temperature.grid(row = 0, column = 0, sticky = W, pady = 2)
-display_temperature.grid(row = 0, column = 1, sticky = W, pady = 2)
+temperature_controller.grid(row = 0, column = 1, sticky = W, pady = 2)
 label_celsius.grid(row = 0, column = 2, sticky = W, pady = 2)
 
 label_controle.grid(row = 1, column = 0, sticky = W, pady = 2)
@@ -99,7 +109,7 @@ motor_controller.grid(row = 4, column = 1, sticky = W, pady = 2)
 label_pourcent_actuel.grid(row = 4, column = 2, sticky = W, pady = 2)
 
 label_distance_actuelle.grid(row = 5, column = 0, sticky = W, pady = 2)
-display_distance.grid(row = 5, column = 1, sticky = W, pady = 2)
+distance_controller.grid(row = 5, column = 1, sticky = W, pady = 2)
 label_cm.grid(row = 5, column = 2, sticky = W, pady = 2)
 
 btn_automatique.grid(row = 1, column = 1, sticky = W, pady = 2)
@@ -108,6 +118,7 @@ btn_ouvrir.grid(row = 3, column = 1, sticky = W, pady = 2)
 btn_fermer.grid(row = 3, column = 2, sticky = W, pady = 2)
 btn_stop.grid(row = 3, column = 3, sticky = W, pady = 2)
 
+# code begins here
 def state_change(state):
     global is_automatique
     global is_manuel
@@ -174,21 +185,19 @@ def state_fermeture():
     else:
         root.after(1, state_fermeture)
 
-def update():
-    root.update()
-    root.after(1, update) 
-
+# get the percent from the entry
 def get_percent():
     # check if entry_pourcent.get() is a number
     if not entry_pourcent.get().isdigit() or int(entry_pourcent.get()) > 100 or int(entry_pourcent.get()) < 0:
         return 100
     return int(entry_pourcent.get())
 
+# update in automatic mode
 def update_automatique():
     if not is_automatique:
         return
 
-    temperature = get_temperature()
+    temperature = temperature_controller.get_temperature()
     temperature = round(temperature, 1)
     percent = (temperature - TEMP_MIN) / (TEMP_MAX - TEMP_MIN) * 100
     percent = int(percent)
@@ -205,67 +214,44 @@ def update_automatique():
         motor_controller.start(-1, 100, percent)
 
     root.after(1000, update_automatique) # run itself again after 1 s
-    
-def get_temperature():
-    value = adc.analogRead(0)        # read ADC value A0 pin
-    voltage = value / 255.0 * 3.3        # calculate voltage
-    try:
-        Rt = 10 * voltage / (3.3 - voltage)    # calculate resistance value of thermistor
-        if Rt == 0:
-            return 0
-        tempK = 1/(1/(273.15 + 25) + math.log(Rt/10)/3950.0) # calculate temperature (Kelvin)
-        tempC = tempK -273.15        # calculate temperature (Celsius)
-    except ZeroDivisionError:
-        Rt = 0 # calculate resistance value of thermistor
-        return 0
 
-    return tempC
-
-def update_temperature():
-    display_temperature['text'] = str(round(get_temperature(), 1))
+#  update display
+def update():
     root.update()
-    root.after(200, update_temperature) # run itself again after 10 ms
+    root.after(10, update) 
 
 def setup():
     GPIO.setmode(GPIO.BOARD)       # use PHYSICAL GPIO Numbering
     for pin in motorPins:
         GPIO.setup(pin,GPIO.OUT)
 
-    global adc
-    if(adc.detectI2C(0x48)): # Detect the pcf8591.
-        adc = PCF8591()
-    elif(adc.detectI2C(0x4b)): # Detect the ads7830
-        adc = ADS7830()
-    else:
-        print("No correct I2C address found, \n"
-        "Please use command 'i2cdetect -y 1' to check the I2C address! \n"
-        "Program Exit. \n")
-        exit(-1)
-
+    # get the current opening 
     global motor_controller
     with open(SAVE_PATH, "r") as f:
         motor_controller.set_cycle(int(f.read()))
+
+def on_closing():
+    # save the current opening
+    with open(SAVE_PATH, "w") as f:
+        f.write(str(motor_controller.get_cycle()))
+    time.sleep(0.5)
+    destroy()
 
 def destroy():
     adc.close()
     GPIO.cleanup()
     root.destroy()
 
-def on_closing():
-    with open(SAVE_PATH, "w") as f:
-        f.write(str(motor_controller.get_cycle()))
-    time.sleep(0.5)
-    destroy()
-
 if __name__ == '__main__':  # Program entrance
     print ('Program is starting ... ')
     setup()
+    # manual mode by default
     state_change("manuel")
     try:
         root.protocol("WM_DELETE_WINDOW", on_closing)
         motor_controller.update()
-        display_distance.update()
-        update_temperature()
+        distance_controller.update()
+        temperature_controller.update()
         # show window
         root.mainloop()
     except KeyboardInterrupt: # Press ctrl-c to end the program.

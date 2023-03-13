@@ -6,6 +6,7 @@ from ADCDevice import *
 from tkinter import *
 
 from Motor import Motor
+from UltrasonicRanging import Ultrasonic
 
 adc = ADCDevice() # Define an ADCDevice class object
 
@@ -43,6 +44,10 @@ label_celsius = Label(root, text = "°C")
 label_poucentage_actuel = Label(root, text = "Ouverture actuelle : ")
 motor_controller = Motor(root, text = "0")
 label_pourcent_actuel = Label(root, text = "%")
+
+label_distance_actuelle = Label(root, text = "Distance actuelle : ")
+display_distance = Ultrasonic(root, text = "0")
+label_cm = Label(root, text = "cm")
 
 label_controle = Label(root, text = "Controle : ")
 label_pourcent = Label(root, text = "%")
@@ -92,6 +97,10 @@ label_pourcent.grid(row = 2, column = 2, sticky = W, pady = 2)
 label_poucentage_actuel.grid(row = 4, column = 0, sticky = W, pady = 2)
 motor_controller.grid(row = 4, column = 1, sticky = W, pady = 2)
 label_pourcent_actuel.grid(row = 4, column = 2, sticky = W, pady = 2)
+
+label_distance_actuelle.grid(row = 5, column = 0, sticky = W, pady = 2)
+display_distance.grid(row = 5, column = 1, sticky = W, pady = 2)
+label_cm.grid(row = 5, column = 2, sticky = W, pady = 2)
 
 btn_automatique.grid(row = 1, column = 1, sticky = W, pady = 2)
 btn_manuel.grid(row = 1, column = 2, sticky = W, pady = 2)
@@ -215,7 +224,7 @@ def get_temperature():
 def update_temperature():
     display_temperature['text'] = str(round(get_temperature(), 1))
     root.update()
-    root.after(100, update_temperature) # run itself again after 10 ms
+    root.after(200, update_temperature) # run itself again after 10 ms
 
 def setup():
     GPIO.setmode(GPIO.BOARD)       # use PHYSICAL GPIO Numbering
@@ -245,6 +254,7 @@ def destroy():
 def on_closing():
     with open(SAVE_PATH, "w") as f:
         f.write(str(motor_controller.get_cycle()))
+    time.sleep(0.5)
     destroy()
 
 if __name__ == '__main__':  # Program entrance
@@ -252,10 +262,11 @@ if __name__ == '__main__':  # Program entrance
     setup()
     state_change("manuel")
     try:
-        motor_controller.update()
-        update_temperature()
         root.protocol("WM_DELETE_WINDOW", on_closing)
+        motor_controller.update()
+        display_distance.update()
+        update_temperature()
         # show window
         root.mainloop()
     except KeyboardInterrupt: # Press ctrl-c to end the program.
-        destroy()
+        on_closing()

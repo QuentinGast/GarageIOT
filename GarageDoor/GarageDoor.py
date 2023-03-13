@@ -9,18 +9,8 @@ from Temperature import Temperature
 
 adc = ADCDevice()  # Define an ADCDevice class object
 
-motorPins = (
-    12,
-    16,
-    18,
-    22,
-)  # define pins connected to four phase ABCD of stepper motor
-CCWStep = (
-    0x01,
-    0x02,
-    0x04,
-    0x08,
-)  # define power supply order for rotating anticlockwise
+motorPins = (12, 16, 18, 22,)  # define pins connected to four phase ABCD of stepper motor
+CCWStep = (0x01, 0x02, 0x04, 0x08,)  # define power supply order for rotating anticlockwise
 CWStep = (0x08, 0x04, 0x02, 0x01)  # define power supply order for rotating clockwise
 
 SAVE_PATH = "GarageDoor/save.txt"

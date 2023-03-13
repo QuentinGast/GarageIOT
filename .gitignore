@@ -130,4 +130,5 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+# local save file
 GarageDoor/save.txt

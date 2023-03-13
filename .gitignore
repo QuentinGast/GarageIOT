@@ -133,3 +133,4 @@ dmypy.json
 # local save file
 GarageDoor/save.txt
 GarageDoor/save.txt
+*/save.txt

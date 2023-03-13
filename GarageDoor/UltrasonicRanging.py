@@ -31,11 +31,10 @@ class Ultrasonic(tk.Label):
         pulseTime = (time.time() - t0) * 1000000
         return pulseTime
 
-    def getSonar(
-        self,
-    ):  # get the measurement results of ultrasonic module,with unit: cm
+    # get the measurement results of ultrasonic module,with unit: cm
+    def getSonar(self):
         GPIO.output(trigPin, GPIO.HIGH)  # make trigPin output 10us HIGH level
-        # time.sleep(0.00001)     # 10us
+        time.sleep(0.00001)  # 10us
         GPIO.output(trigPin, GPIO.LOW)  # make trigPin output LOW level
         pingTime = self.pulseIn(
             echoPin, GPIO.HIGH, timeOut
@@ -48,11 +47,10 @@ class Ultrasonic(tk.Label):
     def updateDistance(self):
         self._five_last_distances.pop(0)
         self._five_last_distances.append(self.getSonar())
+        print(self.getSonar())
         self.after(100, self.updateDistance)
 
     def update(self):
-        moyenne_distances = sum(self._five_last_distances) / len(
-            self._five_last_distances
-        )
+        moyenne_distances = sum(self._five_last_distances) / len(self._five_last_distances)
         self.config(text=str(round(moyenne_distances, 1)))
         self.after(500, self.update)
